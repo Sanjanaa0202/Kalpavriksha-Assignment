@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define FILE_NAME "users.txt"
+
 void operation(int choice);
+void create_file();
 void create_user();
 void read_file();
 void update_user();
@@ -15,6 +18,7 @@ struct User {
 
 int main() {
     int choice;
+    create_file();
     printf("CRUD Operations in a File\n");
     while (1)
     {
@@ -24,7 +28,11 @@ int main() {
         printf("4. Delete User\n");
         printf("5. Exit\n");
         printf("Enter your choice: ");
-        scanf("%d", &choice);
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid choice. Please enter a number.\n");
+            while (getchar() != '\n');
+            continue;
+        }
 
         operation(choice);
     }
@@ -50,36 +58,74 @@ void operation(int choice) {
         printf("Terminated\n");
         exit(0);
     default:
-        printf("Enter a Valid Choice\n");
+        printf("Invalid Choice. Please Enter 1-5.\n");
         break;
     }
 }
 
-void create_user() {
-    printf("Enter User ID: ");
-    scanf("%d", &user.id);
-    printf("Enter User Name: ");
-    scanf("%49s", user.name);
-    printf("Enter User Age: ");
-    scanf("%d", &user.age);
-
+void create_file() {
     FILE *file;
-    file = fopen("users.txt", "r");
-    if (file != NULL) {
-        struct User temp;
-        while (fscanf(file, "%d %*s %*d", &temp.id) == 1) {
-            if (temp.id == user.id) {
-                printf("User ID already exists\n");
-                fclose(file);
-                return;
-            }
-        }
+    file = fopen(FILE_NAME, "a");
+    if (file == NULL) {
+        printf("Error: Unable to create file.\n");
+        return;
     }
     fclose(file);
+}
 
-    file = fopen("users.txt", "a");
+void create_user() {
+
+    do {
+        printf("Enter User ID: ");
+        if (scanf("%d", &user.id) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n');
+            user.id = -1;
+            continue;
+        }
+        if (user.id <= 0) {
+            printf("User ID must be positive.\n");
+        }
+    } while (user.id <= 0);
+    
+    printf("Enter User Name: ");
+    scanf("%49s", user.name);
+
+    do {
+        printf("Enter User Age: ");
+        if (scanf("%d", &user.age) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n');
+            user.age = -1;
+            continue;
+        }
+        if (user.age <= 0 || user.age > 120) {
+            printf("User Age must be between 1 and 120.\n");
+        }
+    } while(user.age <= 0 || user.age > 120);
+
+    FILE *file;
+    file = fopen(FILE_NAME, "r");
+
     if (file == NULL) {
-        printf("Error: File does not exist\n");
+        printf("Error: Unable to open the file.\n");
+        return;
+    }
+
+    struct User temp;
+    while (fscanf(file, "%d %*s %*d", &temp.id) == 1) {
+        if (temp.id == user.id) {
+            printf("User ID already exists\n");
+            fclose(file);
+            return;
+        }
+    }
+
+    fclose(file);
+
+    file = fopen(FILE_NAME, "a");
+    if (file == NULL) {
+        printf("Error: Unable to open the file.\n");
         return;
     }
 
@@ -90,7 +136,7 @@ void create_user() {
 
 void read_file() {
     FILE *file;
-    file = fopen("users.txt", "r");
+    file = fopen(FILE_NAME, "r");
     if (file == NULL) {
         printf("Error: File does not exist\n");
         return;
@@ -114,31 +160,58 @@ void read_file() {
 
 void update_user() {
     FILE *file, *temp;
-    file = fopen("users.txt", "r");
+    file = fopen(FILE_NAME, "r");
     temp = fopen("temp.txt", "w");
 
     if (file == NULL){
         printf("Error: File does not exist\n");
-        fclose(temp);
+        if (temp != NULL) {
+            fclose(temp);
+        }
         return;
     }
 
     if (temp == NULL) {
         printf("Error: File Couldn't Open/Created\n");
-        fclose(file);
+        if (file != NULL) {
+            fclose(file);
+        }
         return;
     }
 
     int id, found = 0;
-    printf("Enter the User ID to update: ");
-    scanf("%d", &id);
+
+    do {
+        printf("Enter User ID to Update: ");
+        if (scanf("%d", &id) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n');
+            id = -1;
+            continue;
+        }
+        if (id <= 0) {
+            printf("User ID must be positive.\n");
+        }
+    } while (id <= 0);
 
     while (fscanf(file, "%d %49s %d", &user.id, user.name, &user.age) == 3) {
         if (user.id == id) {
             printf("Enter User Name: ");
             scanf("%49s", user.name);
-            printf("Enter User Age: ");
-            scanf("%d", &user.age);
+
+            do {
+                printf("Enter User Age: ");
+                if (scanf("%d", &user.age) != 1) {
+                    printf("Invalid input. Please enter a number.\n");
+                    while (getchar() != '\n');
+                    user.age = -1;
+                    continue;
+                }
+                if (user.age <= 0 || user.age > 120) {
+                    printf("User Age must be between 1 and 120.\n");
+                }
+            } while(user.age <= 0 || user.age > 120);
+
             found = 1;
         }
         fprintf(temp, "%d\t%s\t%d\n", user.id, user.name, user.age);
@@ -149,8 +222,8 @@ void update_user() {
 
     if (found) {
         printf("User details has been Updated\n");
-        remove("users.txt");
-        rename("temp.txt", "users.txt");
+        remove(FILE_NAME);
+        rename("temp.txt", FILE_NAME);
     }
     else {
         remove("temp.txt");
@@ -160,24 +233,39 @@ void update_user() {
 
 void delete_user() {
     FILE *file, *temp;
-    file = fopen("users.txt", "r");
+    file = fopen(FILE_NAME, "r");
     temp = fopen("temp.txt", "w");
 
     if (file == NULL){
         printf("Error: File does not exist\n");
-        fclose(temp);
+        if (temp != NULL) {
+            fclose(temp);
+        }
         return;
     }
 
     if (temp == NULL) {
         printf("Error: File Couldn't Open/Created\n");
-        fclose(file);
+        if (file != NULL) {
+            fclose(file);
+        }
         return;
     }
 
     int id, found = 0;
-    printf("Enter User ID to delete: ");
-    scanf("%d", &id);
+
+    do {
+        printf("Enter User ID: ");
+        if (scanf("%d", &id) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n');
+            id = -1;
+            continue;
+        }
+        if (id <= 0) {
+            printf("User ID must be positive.\n");
+        }
+    } while (id <= 0);
 
     while (fscanf(file, "%d %49s %d", &user.id, user.name, &user.age) == 3) {
         if (user.id == id) {
@@ -192,8 +280,8 @@ void delete_user() {
 
     if (found) {
         printf("User ID deleted Successfully\n");
-        remove("users.txt");
-        rename("temp.txt", "users.txt");
+        remove(FILE_NAME);
+        rename("temp.txt", FILE_NAME);
     }
     else {
         printf("User ID not found\n");
