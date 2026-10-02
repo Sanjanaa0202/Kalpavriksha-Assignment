@@ -4,20 +4,23 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#define MAX_LEN 1000
+
 void validate(char *exp);
 int operation(int num1, int num2, char op);
 int precedence(char op);
 int evaluation();
 
 char operators[] = "+-*/";
-int nums[1000];
+int nums[MAX_LEN];
 int numscount = 0;
-char op[1000];
+char op[MAX_LEN];
 int opcount = 0;
 bool invalid = false;
 
 int main() {
-    char exp[1000];
+    char exp[MAX_LEN];
+    printf("Enter an expression: ");
     fgets(exp, sizeof(exp), stdin);
     int len = strlen(exp);
     if (len > 0 && exp[len-1] == '\n') {
@@ -25,7 +28,7 @@ int main() {
     }
 
     validate(exp);
-    if (numscount && opcount) {
+    if (!invalid && numscount > 0) {
         int ans = evaluation();
         if (!invalid) {
             printf("%d\n", ans);
@@ -36,41 +39,42 @@ int main() {
 
 void validate(char *exp) {
     int len = strlen(exp);
+
     if (len == 0) {
-        printf("Error: Empty Expression\n");
-        invalid = true;
-    }
-    else if (!isdigit(exp[0]) || !isdigit(exp[len-1])) {
         printf("Error: Invalid Expression\n");
         invalid = true;
     }
     else {
-        char num[1000] = "";
+        char num[MAX_LEN] = "";
         int numlen = 0;
+        bool is_now_op = false;
+        
         for (int i = 0; i < len; i++) {
-            if (strchr(operators, exp[i])) {
-                if (numlen > 0) {
+            if (isspace(exp[i])){
+                continue;
+            }
+            else if (isdigit(exp[i])) {
+                if (is_now_op) {
+                    printf("Error: Invalid Expression.\n");
+                    invalid = true;
+                    break;
+                }
+                num[numlen++] = exp[i];
+                if (i+1 < len && !isdigit(exp[i+1])) {
                     num[numlen] = '\0';
                     nums[numscount++] = atoi(num);
                     numlen = 0;
-                    num[0] = '\0';
-                }
-                if (i > 0 && i < len) {
-                    if (strchr(operators, exp[i-1]) || strchr(operators, exp[i+1])) {
-                        printf("Error: Invalid Expression\n");
-                        invalid = true;
-                        break;
-                    }
-                    else {
-                        op[opcount++] = exp[i];
-                    }
+                    is_now_op = true;
                 }
             }
-            else if (isdigit(exp[i])) {
-                num[numlen++] = exp[i];
-            }
-            else if (exp[i] == ' ') {
-                continue;
+            else if (strchr(operators, exp[i])) {
+                if (!is_now_op) {
+                    printf("Error: Invalid Expression\n");
+                    invalid = true;
+                    break;
+                }
+                op[opcount++] = exp[i];
+                is_now_op = false;
             }
             else {
                 printf("Error: Invalid Expression\n");
@@ -78,9 +82,16 @@ void validate(char *exp) {
                 break;
             }
         }
+
         if (numlen > 0) {
             num[numlen] = '\0';
             nums[numscount++] = atoi(num);
+            is_now_op = true;
+        }
+
+        if (!is_now_op) {
+            printf("Error: Invalid Expression.\n");
+            invalid = true;
         }
     }
 
@@ -100,7 +111,7 @@ int operation(int num1, int num2, char op) {
             return num1 * num2;
         case '/':
             if (num2 == 0) {
-                printf("Error: Division ny Zero\n");
+                printf("Error: Division by zero.\n");
                 invalid = true;
                 return 0;
             }
@@ -122,9 +133,9 @@ int precedence(char op) {
 }
 
 int evaluation() {
-    char stack[1000];
+    char stack[MAX_LEN];
     int stackpeek = -1;
-    int postfix[1000];
+    int postfix[MAX_LEN];
     int postfixpeek = -1;
     int i = 0, j = 0;
 
@@ -135,22 +146,17 @@ int evaluation() {
                 stack[++stackpeek] = op[j];
             }
             else {
-                if (precedence(op[j]) <= precedence(stack[stackpeek])) {
+                while (stackpeek != -1 && precedence(stack[stackpeek]) >= precedence(op[j])) {
                     int num2 = postfix[postfixpeek--];
                     int num1 = postfix[postfixpeek--];
                     char operator = stack[stackpeek--];
                     int ans = operation(num1, num2, operator);
-                    if (!invalid) {
-                        postfix[++postfixpeek] = ans;
-                        stack[++stackpeek] = op[j];
-                    }
-                    else {
+                    if (invalid) {
                         return 0;
                     }
+                    postfix[++postfixpeek] = ans;
                 }
-                else {
-                    stack[++stackpeek] = op[j];
-                }
+                stack[++stackpeek] = op[j];
             }
             j++;
         }
