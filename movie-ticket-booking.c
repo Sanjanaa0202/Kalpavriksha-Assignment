@@ -4,22 +4,30 @@
 
 #define MIN_TICKET_COUNT 1
 #define MAX_TICKET_COUNT 20
-#define MIN_CATEGORY_COUNT 1
-#define MAX_CATEGORY_COUNT 3
+
+enum ticket_category {
+    STANDARD = 1,
+    PREMIUM,
+    RECLINER
+};
+
+#define MIN_CATEGORY_COUNT STANDARD
+#define MAX_CATEGORY_COUNT RECLINER
 
 void validate_input();
 void validate_input_name();
 void validate_ticket_count_input();
 void validate_category_choice_input();
-void choose_ticket_category(int choice);
+void choose_ticket_category(enum ticket_category choice);
 void calculate_ticket_cost();
 float calculate_discount();
 void generate_bill();
+void print_ticket_category();
 
 struct customer_details {
     char name[30];
     int no_of_tickets;
-    char ticket_category[10];
+    enum ticket_category category;
     float price;
     float subtotal;
     float discount;
@@ -37,9 +45,32 @@ int main() {
     return 0;
 }
 
+void print_ticket_category() {
+    const char *category_name;
+
+    switch (customer.category) {
+        case STANDARD:
+            category_name = "Standard";
+            break;
+
+        case PREMIUM:
+            category_name = "Premium";
+            break;
+        
+        case RECLINER:
+            category_name = "Recliner";
+            break;
+    
+        default:
+            break;
+    }
+
+    printf("Ticket Category: %s\n", category_name);
+}
+
 void generate_bill() {
     printf("\nCustomer Name: %s", customer.name);
-    printf("Ticket Category: %s\n", customer.ticket_category);
+    print_ticket_category();
     printf("Tickets: %d\n", customer.no_of_tickets);
     printf("Subtotal: Rs.%.2f\n", customer.subtotal);
     printf("Discount: %.2f\n", customer.discount);
@@ -70,22 +101,22 @@ void calculate_ticket_cost() {
     customer.total_amount = customer.subtotal - customer.discount;
 }
 
-void choose_ticket_category(int choice) {
+void choose_ticket_category(enum ticket_category choice) {
     switch (choice)
     {
-    case 1:
-        strcpy(customer.ticket_category, "Standard");
-        customer.price = 150.00;
+    case STANDARD:
+        customer.category = STANDARD;
+        customer.price = 150.00f;
         break;
     
     case 2:
-        strcpy(customer.ticket_category, "Premium");
-        customer.price = 250.00;
+        customer.category = PREMIUM;
+        customer.price = 250.00f;
         break;
     
     case 3:
-        strcpy(customer.ticket_category, "Recliner");
-        customer.price = 400.00;
+        customer.category = RECLINER;
+        customer.price = 400.00f;
         break;
     
     default:
@@ -175,7 +206,7 @@ void validate_category_choice_input() {
             continue;
         }
         
-        choose_ticket_category(choice);
+        choose_ticket_category((enum ticket_category)choice);
         
     } while (invalid || choice < MIN_CATEGORY_COUNT || choice > MAX_CATEGORY_COUNT);
 }
