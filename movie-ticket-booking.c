@@ -4,6 +4,7 @@
 
 #define MIN_TICKET_COUNT 1
 #define MAX_TICKET_COUNT 20
+#define MIN_TICKETS_FOR_DISCOUNT 5
 
 enum ticket_category {
     STANDARD = 1,
@@ -13,6 +14,11 @@ enum ticket_category {
 
 #define MIN_CATEGORY_COUNT STANDARD
 #define MAX_CATEGORY_COUNT RECLINER
+
+// Ticket prices declared as constants
+const float STANDARD_PRICE = 150.00f;
+const float PREMIUM_PRICE = 250.00f;
+const float RECLINER_PRICE = 400.00f;
 
 void validate_input();
 void validate_input_name();
@@ -35,18 +41,19 @@ struct customer_details {
 };
 
 // Global Variables
-struct customer_details customer; 
+struct customer_details customer;
 const int DISCOUNT_PERCENTAGE = 10;
 
 int main() {
     validate_input();
     calculate_ticket_cost();
     generate_bill();
+
     return 0;
 }
 
 void print_ticket_category() {
-    const char *category_name;
+    const char *category_name = "Unknown";
 
     switch (customer.category) {
         case STANDARD:
@@ -56,11 +63,11 @@ void print_ticket_category() {
         case PREMIUM:
             category_name = "Premium";
             break;
-        
+
         case RECLINER:
             category_name = "Recliner";
             break;
-    
+
         default:
             break;
     }
@@ -69,7 +76,7 @@ void print_ticket_category() {
 }
 
 void generate_bill() {
-    printf("\nCustomer Name: %s", customer.name);
+    printf("\nCustomer Name: %s\n", customer.name);
     print_ticket_category();
     printf("Tickets: %d\n", customer.no_of_tickets);
     printf("Subtotal: Rs.%.2f\n", customer.subtotal);
@@ -79,8 +86,8 @@ void generate_bill() {
 
 float calculate_discount() {
     float discount;
-    
-    discount = (customer.subtotal * DISCOUNT_PERCENTAGE) / 100.0;
+
+    discount = (customer.subtotal * DISCOUNT_PERCENTAGE) / 100.0f;
 
     return discount;
 }
@@ -90,11 +97,11 @@ void calculate_ticket_cost() {
     customer.subtotal = customer.price * customer.no_of_tickets;
 
     // Calculate Discount
-    if (customer.no_of_tickets >= 5) {
+    if (customer.no_of_tickets >= MIN_TICKETS_FOR_DISCOUNT) {
         customer.discount = calculate_discount();
     }
     else {
-        customer.discount = 0.00;
+        customer.discount = 0.00f;
     }
 
     // Final Bill
@@ -102,62 +109,78 @@ void calculate_ticket_cost() {
 }
 
 void choose_ticket_category(enum ticket_category choice) {
-    switch (choice)
-    {
-    case STANDARD:
-        customer.category = STANDARD;
-        customer.price = 150.00f;
-        break;
-    
-    case 2:
-        customer.category = PREMIUM;
-        customer.price = 250.00f;
-        break;
-    
-    case 3:
-        customer.category = RECLINER;
-        customer.price = 400.00f;
-        break;
-    
-    default:
-        printf("Invalid Ticket Category.\n");
-        printf("\nError: Invalid Choice. Ticket Category choice must be between %d and %d.\n", MIN_CATEGORY_COUNT, MAX_CATEGORY_COUNT);
-        break;
+    switch (choice) {
+        case STANDARD:
+            customer.category = STANDARD;
+            customer.price = STANDARD_PRICE;
+            break;
+
+        case PREMIUM:
+            customer.category = PREMIUM;
+            customer.price = PREMIUM_PRICE;
+            break;
+
+        case RECLINER:
+            customer.category = RECLINER;
+            customer.price = RECLINER_PRICE;
+            break;
+
+        default:
+            // Invalid choices are checked before calling this function.
+            break;
     }
 }
 
 void validate_input_name() {
-    int invalid = 1;
+    int invalid;
+
     do {
+        invalid = 0;
+
         printf("Enter your Name: ");
+
         if (fgets(customer.name, sizeof(customer.name), stdin) == NULL) {
             printf("\nError: Unable to read Name.\n");
             return;
         }
-        
-        for (int i = 0; customer.name[i] != '\0'; i++) {
-            if (!isspace((unsigned char)customer.name[i])) {
-                invalid = 0;
-                break;
+
+        // Remove the newline character, if present
+        customer.name[strcspn(customer.name, "\n")] = '\0';
+
+        // Reject empty names and names containing whitespace
+        if (customer.name[0] == '\0') {
+            invalid = 1;
+        }
+        else {
+            for (int i = 0; customer.name[i] != '\0'; i++) {
+                if (isspace((unsigned char)customer.name[i])) {
+                    invalid = 1;
+                    break;
+                }
             }
         }
 
         if (invalid) {
-            printf("\nError: Name must not be Empty\n");
+            printf("\nError: Enter a single name without spaces.\n");
         }
-        
-    } while(invalid);
+
+    } while (invalid);
 }
 
 void validate_ticket_count_input() {
     char ticket_count[10];
-    int ch, invalid, isdecimal;
+    int invalid;
+    char isdecimal;
+
     do {
         invalid = 0;
-        printf("\nDiscount of %d%% will be applied for 5 or more customers to the subtotal.\n", DISCOUNT_PERCENTAGE);
+
+        printf("\nDiscount of %d%% will be applied for %d or more tickets.\n",
+               DISCOUNT_PERCENTAGE, MIN_TICKETS_FOR_DISCOUNT);
         printf("Enter Number of Tickets: ");
+
         if (fgets(ticket_count, sizeof(ticket_count), stdin) == NULL) {
-            printf("\nError: Unable to read input\n");
+            printf("\nError: Unable to read input.\n");
             return;
         }
 
@@ -167,64 +190,89 @@ void validate_ticket_count_input() {
             continue;
         }
 
-        if (sscanf(ticket_count, "%d %c", &customer.no_of_tickets, &isdecimal) != 1) {
-            printf("\nError: Enter a valid Number.\n");
+        if (sscanf(ticket_count, "%d %c",
+                   &customer.no_of_tickets, &isdecimal) != 1) {
+            printf("\nError: Enter a valid whole number.\n");
             invalid = 1;
             continue;
         }
 
-        if (customer.no_of_tickets < MIN_TICKET_COUNT || customer.no_of_tickets > MAX_TICKET_COUNT) {
-            printf("\nError: Invalid Ticket Count. \nEnter Ticket Count between %d and %d\n", MIN_TICKET_COUNT, MAX_TICKET_COUNT);
+        if (customer.no_of_tickets < MIN_TICKET_COUNT ||
+            customer.no_of_tickets > MAX_TICKET_COUNT) {
+            printf("\nError: Invalid Ticket Count.\n");
+            printf("Enter Ticket Count between %d and %d.\n",
+                   MIN_TICKET_COUNT, MAX_TICKET_COUNT);
             invalid = 1;
-            continue;
         }
+
     } while (invalid);
 }
 
 void validate_category_choice_input() {
     char ticket_category_choice[10];
-    int ch, invalid, choice, isdecimal; // Local Variable
+    int invalid;
+    int choice;
+    char isdecimal;
+
     do {
         invalid = 0;
+
         printf("\nTicket Category\n");
-        printf(" 1. Standard - Rs. 150 \n 2. Premium - Rs. 250 \n 3. Recliner - Rs. 400 \n");
+        printf(" 1. Standard - Rs. %.2f\n", STANDARD_PRICE);
+        printf(" 2. Premium  - Rs. %.2f\n", PREMIUM_PRICE);
+        printf(" 3. Recliner - Rs. %.2f\n", RECLINER_PRICE);
         printf("Choose the Ticket Category: ");
-        if (fgets(ticket_category_choice, sizeof(ticket_category_choice), stdin) == NULL) {
-            printf("\nError: Unable to read input\n");
+
+        if (fgets(ticket_category_choice,
+                  sizeof(ticket_category_choice), stdin) == NULL) {
+            printf("\nError: Unable to read input.\n");
             return;
         }
 
-        if (ticket_category_choice[0] == '\n' || ticket_category_choice[0] == '\0') {
+        if (ticket_category_choice[0] == '\n' ||
+            ticket_category_choice[0] == '\0') {
             printf("\nError: Ticket Category Choice is required.\n");
             invalid = 1;
             continue;
         }
 
-        if (sscanf(ticket_category_choice, "%d %c", &choice, &isdecimal) != 1) {
-            printf("\nError: Enter a valid Number.\n");
+        if (sscanf(ticket_category_choice, "%d %c",
+                   &choice, &isdecimal) != 1) {
+            printf("\nError: Enter a valid whole number.\n");
             invalid = 1;
             continue;
         }
-        
+
+        // Validate the range before calling choose_ticket_category()
+        if (choice < MIN_CATEGORY_COUNT ||
+            choice > MAX_CATEGORY_COUNT) {
+            printf("\nError: Invalid Ticket Category.\n");
+            printf("Choose a category between %d and %d.\n",
+                   MIN_CATEGORY_COUNT, MAX_CATEGORY_COUNT);
+            invalid = 1;
+            continue;
+        }
+
         choose_ticket_category((enum ticket_category)choice);
-        
-    } while (invalid || choice < MIN_CATEGORY_COUNT || choice > MAX_CATEGORY_COUNT);
+
+    } while (invalid);
 }
 
 void validate_input() {
     // Validate Name Input
     validate_input_name();
-    
+
     // Validate Ticket Count Input
     validate_ticket_count_input();
 
     // Validate Ticket Category Input
     validate_category_choice_input();
 
-    if (customer.no_of_tickets >= 5) {
-        printf("%d%% Discount will be applied to the subtotal\n", DISCOUNT_PERCENTAGE);
+    if (customer.no_of_tickets >= MIN_TICKETS_FOR_DISCOUNT) {
+        printf("%d%% discount will be applied to the subtotal.\n",
+               DISCOUNT_PERCENTAGE);
     }
     else {
-        printf("No Discount will be applied to the subtotal\n");
+        printf("No discount will be applied to the subtotal.\n");
     }
 }
